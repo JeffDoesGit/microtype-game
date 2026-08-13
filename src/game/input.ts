@@ -36,31 +36,28 @@ export type InputEvent =
 
 /**
  * Spans are contiguous and cover every index in the line: each word's span
- * absorbs the whitespace *preceding* it, and the first span starts at 0.
+ * absorbs the whitespace *following* it, and the last span runs to end of line.
  *
  * §3 leaves this underspecified — it defines a span per word but also says
  * every miss fires "at the hoop for the current word", which requires every
- * index, separators included, to belong to exactly one word. Attributing a
- * separator to the word it leads into keeps that total without moving the make
- * shot: a span still ends on its word's last character, so a clean word
- * launches its ball the instant you finish typing it, not a keystroke later
- * once you have hit space. The cost is that fumbling the space before a word
- * bricks that word rather than the one behind it.
+ * index, separators included, to belong to exactly one word. Attaching the
+ * separator to the word it follows means a word resolves when you hit the
+ * space after it, and that the space is part of the word for correctness: fumble
+ * it and the word is already dirty when it resolves, so it never launches a
+ * ball. No word can brick after it has scored.
  */
 function computeWordSpans(line: string): WordSpan[] {
   const words = [...line.matchAll(/\S+/g)]
   if (words.length === 0) return []
 
-  const spans: WordSpan[] = words.map((word, i) => {
-    const previous = words[i - 1]
-    const start = previous === undefined ? 0 : previous.index + previous[0].length
-    return [start, word.index + word[0].length]
+  return words.map((word, i) => {
+    const next = words[i + 1]
+    // Leading whitespace joins the first word; the last span runs to the end of
+    // the line, so §3 rule 4 resolves it exactly when the cursor gets there.
+    const start = i === 0 ? 0 : word.index
+    const end = next === undefined ? line.length : next.index
+    return [start, end]
   })
-
-  // Trailing whitespace joins the last word, so its span ends at end-of-line
-  // and §3 rule 4 resolves it exactly when the cursor gets there.
-  spans[spans.length - 1]![1] = line.length
-  return spans
 }
 
 export function createLineState(line: string): LineState {
