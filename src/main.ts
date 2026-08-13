@@ -8,16 +8,18 @@ import {
   wordIndexAt,
   type LineState,
 } from './game/input.ts'
+import { createScorer } from './game/scoring.ts'
 import { createShotQueue } from './game/shots.ts'
 import {
   COURT_HEIGHT,
   COURT_WIDTH,
-  SHOOTER,
-  computeCourtLayout,
+  HOOP,
+  computeRackLayout,
   drawCourt,
-  type CourtLayout,
   type Palette,
+  type RackLayout,
 } from './render/court.ts'
+import { createModal } from './render/results.ts'
 import { createStrip } from './render/strip.ts'
 import { PLACEHOLDER_LINES } from './content/placeholder.ts'
 
@@ -76,46 +78,47 @@ function wordsOf(line: string): string[] {
   return line.match(/\S+/g) ?? []
 }
 
-function main(): void {
-  const stage = document.querySelector<HTMLElement>('#stage')
-  const canvas = document.querySelector<HTMLCanvasElement>('#court')
-  const targetRow = document.querySelector<HTMLElement>('#strip-target')
-  const typedRow = document.querySelector<HTMLElement>('#strip-typed')
-  const hintRow = document.querySelector<HTMLElement>('#strip-hint')
-  if (!stage || !canvas || !targetRow || !typedRow || !hintRow) {
-    throw new Error('stage markup missing from index.html')
-  }
+function required<T extends HTMLElement>(selector: string): T {
+  const element = document.querySelector<T>(selector)
+  if (!element) throw new Error(`${selector} missing from index.html`)
+  return element
+}
 
+function main(): void {
+  const stage = required<HTMLElement>('#stage')
+  const canvas = required<HTMLCanvasElement>('#court')
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('2D canvas context unavailable')
 
   const palette = readPalette()
-  const strip = createStrip(targetRow, typedRow, hintRow)
+  const strip = createStrip(
+    required('#strip-target'),
+    required('#strip-typed'),
+    required('#strip-hint'),
+  )
+  const modal = createModal(required('#modal'), required('#modal-title'), required('#modal-body'))
 
-  // §8: reduced motion draws each shot as an instant trail, with no travel.
+  // §8: reduced motion draws each shot with no travel.
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
-  const shotQueue = createShotQueue(SHOOTER, { instant: () => reducedMotion.matches })
+  const shotQueue = createShotQueue(HOOP, { instant: () => reducedMotion.matches })
+  const scorer = createScorer()
 
   const lines = PLACEHOLDER_LINES
   let lineIndex = 0
   let state: LineState = createLineState(lines[0]!)
   let words = wordsOf(lines[0]!)
-  let layout: CourtLayout = computeCourtLayout(words.length)
+  let layout: RackLayout = computeRackLayout(words.length)
   let finished = false
   let frame = 0
 
   const paint = (): void => {
     const now = performance.now()
     const currentWord = finished ? -1 : wordIndexAt(state, state.cursor)
-    drawCourt(ctx, palette, layout, words, currentWord, shotQueue.shots, now)
+    drawCourt(ctx, palette, layout, words, state.wordResolved, currentWord, shotQueue.shots, now)
 
     // Animate only while a ball is visible; otherwise the court holds still,
     // which is the whole of the §8 motion budget.
-    if (shotQueue.isAnimating(now)) {
-      frame = requestAnimationFrame(paint)
-    } else {
-      frame = 0
-    }
+    frame = shotQueue.isAnimating(now) ? requestAnimationFrame(paint) : 0
   }
 
   const requestPaint = (): void => {
@@ -124,43 +127,54 @@ function main(): void {
 
   const refreshStrip = (): void => {
     strip.render(state)
-    if (finished) strip.setHint('Drill complete.')
+    if (finished) strip.setHint('')
     else if (isLineComplete(state)) strip.setHint('Strike Enter to continue.')
     else strip.setHint('')
   }
 
   window.addEventListener('keydown', (event) => {
-    if (finished) return
     // Leave browser and OS shortcuts alone; only bare keys are drill input.
     if (event.ctrlKey || event.metaKey || event.altKey) return
 
+    // The results card takes Enter and swallows everything else (§7).
+    if (modal.isOpen) {
+      event.preventDefault()
+      if (event.key === 'Enter') modal.hide()
+      return
+    }
+    if (finished) return
+
+    const now = performance.now()
     const events = applyKey(state, event.key)
+    scorer.keystroke(now)
 
     // Space scrolls and Backspace can navigate; both are drill input here.
     if (event.key === ' ' || event.key === 'Backspace' || event.key === 'Enter') {
       event.preventDefault()
     }
 
-    const now = performance.now()
     for (const e of events) {
       if (e.kind === 'make') {
-        const hoop = layout.hoops[e.wordIndex]
-        if (hoop) shotQueue.fire(hoop, 'make', e.wordIndex, now)
+        const slot = layout.slots[e.wordIndex]
+        if (slot) shotQueue.fire(slot, 'make', e.wordIndex, now)
+        scorer.recordMake()
       } else if (e.kind === 'miss') {
         // §4 seeds missKind from the error's character index, so the same
         // mistake always bricks the same way.
-        const hoop = layout.hoops[e.wordIndex]
-        if (hoop) shotQueue.fire(hoop, 'miss', e.charIndex, now)
+        const slot = layout.slots[e.wordIndex]
+        if (slot) shotQueue.fire(slot, 'miss', e.charIndex, now)
+        scorer.recordMiss()
       } else if (e.kind === 'lineCommitted') {
+        scorer.commitLine(state)
         lineIndex += 1
         const next = lines[lineIndex]
         if (next === undefined) {
           finished = true
+          modal.showResults(scorer.stats(now))
         } else {
           state = createLineState(next)
           words = wordsOf(next)
-          layout = computeCourtLayout(words.length)
-          // §4: trails persist for the rest of the line, and no longer.
+          layout = computeRackLayout(words.length)
           shotQueue.clear()
         }
       }

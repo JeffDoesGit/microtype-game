@@ -2,9 +2,9 @@
  * The shot queue and arc math (DESIGN.md §4).
  *
  * Not a physics sim: every shot is a quadratic bezier resolved at spawn time,
- * followed by a short drop so a brick visibly falls away. Shots are never
- * removed mid-line — a finished shot is what draws its trail, and §4 wants
- * those trails to accumulate into a shot chart of the line.
+ * followed by a short drop so a brick visibly falls away. There is one hoop,
+ * and each shot launches from its word's ball in the rack, so the origin
+ * varies per shot while the target stays put.
  */
 
 export type Vec2 = { x: number; y: number }
@@ -91,7 +91,9 @@ export function createShot(
   const reach = clamp01(distance(origin, hoop) / 900)
   const duration = lerp(DURATION_MIN, DURATION_MAX, reach)
 
-  // Control point above the hoop gives the arc its height.
+  // Control point above the hoop gives the arc its height. A quadratic bezier
+  // only reaches about halfway to its control point, so the control sits well
+  // above the rim for the ball to drop in from above rather than rise into it.
   const control: Vec2 = {
     x: lerp(origin.x, geometry.end.x, 0.5),
     y: Math.min(origin.y, geometry.end.y) - lerp(160, 300, reach),
@@ -122,30 +124,29 @@ export function arcPoint(shot: Shot, t: number): Vec2 {
 }
 
 export type ShotPhase =
-  | { phase: 'flight'; at: Vec2; progress: number; alpha: number }
-  | { phase: 'drop'; at: Vec2; progress: 1; alpha: number }
-  | { phase: 'done'; progress: 1 }
+  | { phase: 'flight'; at: Vec2; alpha: number }
+  | { phase: 'drop'; at: Vec2; alpha: number }
+  | { phase: 'done' }
 
 /**
  * Where a shot is now. A make passes through the rim and fades below it; a miss
- * deflects along its drop velocity. Either way the ball is gone within
- * DROP_MS, but the trail it drew stays for the rest of the line.
+ * deflects along its drop velocity. Either way the ball is gone within DROP_MS,
+ * and once it is gone the court is clean again.
  */
 export function shotAt(shot: Shot, now: number): ShotPhase {
   const elapsed = now - shot.t0
 
   if (elapsed < shot.duration && !shot.cut) {
     const t = clamp01(elapsed / shot.duration)
-    return { phase: 'flight', at: arcPoint(shot, t), progress: t, alpha: 1 }
+    return { phase: 'flight', at: arcPoint(shot, t), alpha: 1 }
   }
 
   const since = shot.cut ? DROP_MS : elapsed - shot.duration
-  if (since >= DROP_MS) return { phase: 'done', progress: 1 }
+  if (since >= DROP_MS) return { phase: 'done' }
 
   const seconds = since / 1000
   return {
     phase: 'drop',
-    progress: 1,
     at: {
       x: shot.end.x + shot.drop.x * seconds,
       y: shot.end.y + shot.drop.y * seconds,
@@ -155,36 +156,37 @@ export function shotAt(shot: Shot, now: number): ShotPhase {
 }
 
 export type ShotQueue = {
-  /** Every shot taken this line, oldest first — this is the shot chart. */
+  /** Shots taken this line, oldest first. Retired ones are pruned. */
   readonly shots: Shot[]
-  fire(hoop: Vec2, outcome: 'make' | 'miss', seed: number, now: number): Shot
+  fire(origin: Vec2, outcome: 'make' | 'miss', seed: number, now: number): Shot
   /** True while any ball is still visible, so the caller knows to keep animating. */
   isAnimating(now: number): boolean
   clear(): void
 }
 
 export function createShotQueue(
-  origin: Vec2,
+  hoop: Vec2,
   /** Read per shot, so toggling reduced motion mid-drill takes effect. */
   options: { instant: () => boolean },
 ): ShotQueue {
-  const shots: Shot[] = []
+  let shots: Shot[] = []
 
   return {
-    shots,
+    get shots() {
+      return shots
+    },
 
-    fire(hoop, outcome, seed, now) {
+    fire(origin, outcome, seed, now) {
       const shot = createShot(origin, hoop, outcome, seed, now)
 
-      // §8: under prefers-reduced-motion a shot is drawn as an instant trail
-      // with no travel, so it lands already retired.
+      // §8: under prefers-reduced-motion a shot lands with no travel.
       if (options.instant()) shot.cut = true
 
-      const inFlight = shots.filter((s) => shotAt(s, now).phase !== 'done')
-      if (inFlight.length >= MAX_IN_FLIGHT) {
-        // Drop the oldest: its trail is already drawn in full, so the shot
-        // chart is unaffected — only the ball disappears early.
-        inFlight[0]!.cut = true
+      // Retired shots leave nothing behind, so drop them as they finish.
+      shots = shots.filter((s) => shotAt(s, now).phase !== 'done')
+      if (shots.length >= MAX_IN_FLIGHT) {
+        // §4: beyond the cap, the oldest ball disappears early.
+        shots[0]!.cut = true
       }
 
       shots.push(shot)
@@ -196,7 +198,7 @@ export function createShotQueue(
     },
 
     clear() {
-      shots.length = 0
+      shots = []
     },
   }
 }
