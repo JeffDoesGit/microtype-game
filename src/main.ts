@@ -22,6 +22,7 @@ import {
 import { createRail } from './render/rail.ts'
 import { createModal } from './render/results.ts'
 import { createStrip } from './render/strip.ts'
+import { loadSave, persistSave, recordAttempt, type DrillMode } from './store/save.ts'
 import {
   LESSONS,
   createLessonSource,
@@ -91,12 +92,14 @@ function wordsOf(line: string): string[] {
  * (`?lesson=l04&mode=random`). Custom text needs a textarea, so it waits for
  * the menu. Defaults to the first lesson.
  */
-function selectSource(): DrillSource {
+function selectSource(): { source: DrillSource; mode: DrillMode } {
   const params = new URLSearchParams(window.location.search)
   const requested = params.get('lesson') ?? LESSONS[0]!.id
   const id = lessonIndex(requested) === -1 ? LESSONS[0]!.id : requested
 
-  return params.get('mode') === 'random' ? createRandomSource(id) : createLessonSource(id)
+  return params.get('mode') === 'random'
+    ? { source: createRandomSource(id), mode: 'random' }
+    : { source: createLessonSource(id), mode: 'lesson' }
 }
 
 function required<T extends HTMLElement>(selector: string): T {
@@ -131,8 +134,9 @@ function main(): void {
   const shotQueue = createShotQueue(HOOP, { instant: () => reducedMotion.matches })
   const scorer = createScorer()
 
-  const source = selectSource()
+  const { source, mode } = selectSource()
   const lines = source.getLines()
+  let save = loadSave(window.localStorage)
   let lineIndex = 0
   let state: LineState = createLineState(lines[0]!)
   let words = wordsOf(lines[0]!)
@@ -152,6 +156,30 @@ function main(): void {
 
   const requestPaint = (): void => {
     if (frame === 0) frame = requestAnimationFrame(paint)
+  }
+
+  /** Fold the round into the save, then show it (§5 bonus, §7 persistence). */
+  const finishDrill = (now: number): void => {
+    if (scorer.stats(now).wpm >= source.goalWpm) scorer.awardGoalBonus()
+    const stats = scorer.stats(now)
+
+    save = recordAttempt(save, {
+      ts: Date.now(),
+      mode,
+      sourceId: source.id,
+      goalWpm: source.goalWpm,
+      wpm: stats.wpm,
+      accuracy: stats.accuracy,
+      errors: stats.misses,
+      durationMs: stats.elapsedMs,
+      keyErrors: stats.keyErrors,
+    })
+    persistSave(window.localStorage, save)
+
+    modal.showResults(stats, {
+      bestWpm: save.lessons[source.id]?.bestWpm ?? stats.wpm,
+      goalWpm: source.goalWpm,
+    })
   }
 
   const refreshRail = (now: number): void => {
@@ -204,14 +232,14 @@ function main(): void {
         // mistake always bricks the same way.
         const slot = layout.slots[e.wordIndex]
         if (slot) shotQueue.fire(slot, 'miss', e.charIndex, now)
-        scorer.recordMiss()
+        scorer.recordMiss(state.chars[e.charIndex]!.target)
       } else if (e.kind === 'lineCommitted') {
         scorer.commitLine(state)
         lineIndex += 1
         const next = lines[lineIndex]
         if (next === undefined) {
           finished = true
-          modal.showResults(scorer.stats(now))
+          finishDrill(now)
         } else {
           state = createLineState(next)
           words = wordsOf(next)

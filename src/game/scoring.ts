@@ -16,6 +16,8 @@ export type DrillStats = {
   misses: number
   correctChars: number
   totalChars: number
+  /** Per-character miss counts for this drill, keyed by the target character. */
+  keyErrors: Record<string, number>
   elapsedMs: number
   wpm: number
   accuracy: number
@@ -25,6 +27,11 @@ export type DrillStats = {
 const POINTS_PER_MAKE = 100
 const COMBO_STEP = 0.5
 const COMBO_CAP = 4
+/**
+ * §5 awards a bonus for beating the goal without naming a figure; this is five
+ * made baskets' worth at the base multiplier.
+ */
+const GOAL_BONUS = 500
 /** §5: smooth the live rate over this window so the rail does not jitter. */
 const SMOOTHING_MS = 3000
 
@@ -36,7 +43,10 @@ export type Scorer = {
    */
   keystroke(now: number): void
   recordMake(): void
-  recordMiss(): void
+  /** `targetChar` is the character that should have been typed (§7). */
+  recordMiss(targetChar: string): void
+  /** §5: beating the lesson goal awards a bonus, once, at the end of the drill. */
+  awardGoalBonus(): void
   /** Fold a finished line's characters into the drill totals. */
   commitLine(state: LineState): void
   stats(now: number): DrillStats
@@ -65,6 +75,8 @@ export function createScorer(): Scorer {
   let misses = 0
   let correctChars = 0
   let totalChars = 0
+  let bonusAwarded = false
+  const keyErrors: Record<string, number> = {}
   let samples: Array<{ at: number; wpm: number }> = []
 
   /** Raw gwam for a given clean-character count, over the elapsed clock. */
@@ -88,9 +100,16 @@ export function createScorer(): Scorer {
       combo = Math.min(COMBO_CAP, combo + COMBO_STEP)
     },
 
-    recordMiss() {
+    recordMiss(targetChar) {
       misses += 1
       combo = 1
+      keyErrors[targetChar] = (keyErrors[targetChar] ?? 0) + 1
+    },
+
+    awardGoalBonus() {
+      if (bonusAwarded) return
+      bonusAwarded = true
+      score += GOAL_BONUS
     },
 
     commitLine(state) {
@@ -125,6 +144,7 @@ export function createScorer(): Scorer {
         misses,
         correctChars,
         totalChars,
+        keyErrors: { ...keyErrors },
         elapsedMs,
         // §5 gwam: correct characters over five, per minute.
         wpm: minutes > 0 ? correctChars / 5 / minutes : 0,

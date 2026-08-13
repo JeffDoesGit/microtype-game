@@ -85,7 +85,7 @@ test('a miss resets the multiplier to 1x but keeps the score', () => {
   scorer.recordMake()
   const earned = scorer.stats(0).score
 
-  scorer.recordMiss()
+  scorer.recordMiss("e")
   const stats = scorer.stats(0)
   assert.equal(stats.combo, 1)
   assert.equal(stats.score, earned)
@@ -156,4 +156,34 @@ test('live wpm with no line in progress reports the committed rate', () => {
   playLine(scorer, 'he or she', 'he or she')
 
   assert.equal(scorer.liveWpm(60_000, null), 1.8)
+})
+
+test('misses are counted against the character that should have been typed', () => {
+  const scorer = createScorer()
+
+  scorer.recordMiss('e')
+  scorer.recordMiss('e')
+  scorer.recordMiss('r')
+
+  assert.deepEqual(scorer.stats(0).keyErrors, { e: 2, r: 1 })
+})
+
+test('the key error map cannot be mutated through stats', () => {
+  const scorer = createScorer()
+  scorer.recordMiss('e')
+
+  scorer.stats(0).keyErrors['e'] = 999
+  assert.deepEqual(scorer.stats(0).keyErrors, { e: 1 })
+})
+
+test('the goal bonus is awarded once, however often it is claimed', () => {
+  const scorer = createScorer()
+  const before = scorer.stats(0).score
+
+  scorer.awardGoalBonus()
+  const once = scorer.stats(0).score
+  scorer.awardGoalBonus()
+
+  assert.equal(once, before + 500)
+  assert.equal(scorer.stats(0).score, once)
 })
