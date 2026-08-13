@@ -26,9 +26,9 @@ const misses = (events: InputEvent[]): number[] =>
 test('spans are contiguous and cover every index', () => {
   const state = createLineState('he or she;')
   assert.deepEqual(state.wordSpans, [
-    [0, 2],
-    [2, 5],
-    [5, 10],
+    [0, 3],
+    [3, 6],
+    [6, 10],
   ])
   assert.equal(state.wordSpans[0]![0], 0)
   assert.equal(state.wordSpans.at(-1)![1], state.chars.length)
@@ -40,8 +40,8 @@ test('spans are contiguous and cover every index', () => {
 test('leading and trailing whitespace attach to the adjacent word', () => {
   const state = createLineState('  he or  ')
   assert.deepEqual(state.wordSpans, [
-    [0, 4],
-    [4, 9],
+    [0, 5],
+    [5, 9],
   ])
 })
 
@@ -53,13 +53,15 @@ test('a blank line yields no spans and does not throw', () => {
 
 // --- rule 1: printable keys -------------------------------------------------
 
-test('a clean word fires exactly one make, on its last character', () => {
+test('a clean word fires exactly one make, when the space after it is typed', () => {
   const state = createLineState('he or')
 
   assert.deepEqual(applyKey(state, 'h'), [])
-  assert.deepEqual(applyKey(state, 'e'), [{ kind: 'make', wordIndex: 0 }])
-  // The space after the word must not fire anything a second time.
-  assert.deepEqual(applyKey(state, ' '), [])
+  // The word is finished but unresolved — the ball waits for the space.
+  assert.deepEqual(applyKey(state, 'e'), [])
+  assert.deepEqual(applyKey(state, ' '), [{ kind: 'make', wordIndex: 0 }])
+  // And nothing fires a second time as the next word begins.
+  assert.deepEqual(applyKey(state, 'o'), [])
 })
 
 test('a mistyped character fires a miss immediately and suppresses the make', () => {
@@ -69,6 +71,10 @@ test('a mistyped character fires a miss immediately and suppresses the make', ()
   assert.deepEqual(events, [{ kind: 'miss', wordIndex: 0, charIndex: 1 }])
   assert.equal(state.chars[1]!.typed, 'r')
   assert.equal(state.chars[1]!.everWrong, true)
+  assert.equal(state.wordResolved[0], false)
+
+  // Resolving the word later yields no make.
+  assert.deepEqual(applyKey(state, ' '), [])
   assert.equal(state.wordResolved[0], true)
 })
 
@@ -88,15 +94,16 @@ test('space where a letter belongs is a miss, and vice versa (rule 6)', () => {
   assert.deepEqual(misses(type(spaceForLetter, 'h ')), [1])
 })
 
-test('a fumbled separator bricks the word it leads into', () => {
+test('a fumbled separator bricks the word it follows, which never scores', () => {
   const state = createLineState('he or')
   const events = type(state, 'hexor')
 
-  assert.deepEqual(makes(events), [0])
   assert.deepEqual(
     events.filter((e) => e.kind === 'miss'),
-    [{ kind: 'miss', wordIndex: 1, charIndex: 2 }],
+    [{ kind: 'miss', wordIndex: 0, charIndex: 2 }],
   )
+  // Word 0 was dirty by the time it resolved, so only word 1 scores.
+  assert.deepEqual(makes(events), [1])
 })
 
 // --- rule 2: backspace ------------------------------------------------------
@@ -116,16 +123,17 @@ test('backspace then a correct retype still fires no make (sticky everWrong)', (
   type(state, 'hr')
   applyKey(state, 'Backspace')
 
-  assert.deepEqual(applyKey(state, 'e'), [])
+  assert.equal(state.chars[1]!.typed, null)
+  assert.deepEqual(type(state, 'e '), [])
   assert.equal(state.chars[1]!.typed, 'e')
 })
 
 test('re-crossing a resolved boundary does not re-fire the make', () => {
   const state = createLineState('he or')
-  assert.deepEqual(makes(type(state, 'he')), [0])
+  assert.deepEqual(makes(type(state, 'he ')), [0])
 
   applyKey(state, 'Backspace')
-  assert.deepEqual(applyKey(state, 'e'), [])
+  assert.deepEqual(applyKey(state, ' '), [])
 })
 
 test('backspace at line start is a no-op', () => {
