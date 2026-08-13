@@ -28,6 +28,8 @@ jobs:
 
       - run: npm ci
 
+      - run: npm test
+
       - run: npm run build
         env:
           # Project sites live at /<repo-name>/ — deriving it here keeps the
