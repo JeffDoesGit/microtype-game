@@ -1,0 +1,13 @@
+/* Palette — DESIGN.md §8. */
+:root {
+  --court-deep: #16324f;
+  --hardwood: #c9884b;
+  --chalk: #f5f2ec;
+  --ball: #f26b21;
+  --net: #7fd4c1;
+  --brick: #e8433f;
+
+  /* Not in the spec palette: the field outside the letterboxed stage. Kept
+     darker than --court-deep so the stage bounds are visible while scaling. */
+  --letterbox: #0b1622;
+}
