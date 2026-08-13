@@ -22,7 +22,13 @@ import {
 import { createRail } from './render/rail.ts'
 import { createModal } from './render/results.ts'
 import { createStrip } from './render/strip.ts'
-import { PLACEHOLDER_GOAL_WPM, PLACEHOLDER_LINES } from './content/placeholder.ts'
+import {
+  LESSONS,
+  createLessonSource,
+  createRandomSource,
+  lessonIndex,
+  type DrillSource,
+} from './content/sources.ts'
 
 // The stage is a fixed 16:10 logical coordinate space (DESIGN.md §2). The DOM
 // inside it is laid out at these dimensions and scaled as a unit, so the drill
@@ -79,6 +85,20 @@ function wordsOf(line: string): string[] {
   return line.match(/\S+/g) ?? []
 }
 
+/**
+ * Which drill to run. A stand-in for the menu in §9's state machine: the query
+ * string picks a lesson (`?lesson=l04`) or a random drill at that tier
+ * (`?lesson=l04&mode=random`). Custom text needs a textarea, so it waits for
+ * the menu. Defaults to the first lesson.
+ */
+function selectSource(): DrillSource {
+  const params = new URLSearchParams(window.location.search)
+  const requested = params.get('lesson') ?? LESSONS[0]!.id
+  const id = lessonIndex(requested) === -1 ? LESSONS[0]!.id : requested
+
+  return params.get('mode') === 'random' ? createRandomSource(id) : createLessonSource(id)
+}
+
 function required<T extends HTMLElement>(selector: string): T {
   const element = document.querySelector<T>(selector)
   if (!element) throw new Error(`${selector} missing from index.html`)
@@ -111,7 +131,8 @@ function main(): void {
   const shotQueue = createShotQueue(HOOP, { instant: () => reducedMotion.matches })
   const scorer = createScorer()
 
-  const lines = PLACEHOLDER_LINES
+  const source = selectSource()
+  const lines = source.getLines()
   let lineIndex = 0
   let state: LineState = createLineState(lines[0]!)
   let words = wordsOf(lines[0]!)
@@ -139,7 +160,7 @@ function main(): void {
       score: stats.score,
       combo: stats.combo,
       wpm: scorer.liveWpm(now, finished ? null : state),
-      goalWpm: PLACEHOLDER_GOAL_WPM,
+      goalWpm: source.goalWpm,
       line: Math.min(lineIndex + 1, lines.length),
       lineCount: lines.length,
     })

@@ -164,6 +164,8 @@ interface DrillSource {
 
 Author ~15 lessons: home row → E/I → R/T → O/N → punctuation → capitals → numbers → mixed. Lines run 40–60 chars. Each lesson introduces at most two new keys and reuses everything prior.
 
+Three lessons are deliberate exceptions to the two-key rule: `l01` is the home-row baseline rather than an increment, and the two number lessons take five digits each, since the digit row is learned as a unit. `Shift` counts as a key — once taught, capitals are in play, and `newKeys: ["Shift"]` is what unlocks them.
+
 **Random** — word bank filtered by an allowed character set per tier, assembled into lines of 45–55 chars at word boundaries. Weight toward words containing the tier's newest keys.
 
 **Custom** — textarea, paste anything. Normalize whitespace, strip characters outside the supported set, chunk into ~50-char lines breaking only at spaces. Warn if the text contains characters that got stripped.
