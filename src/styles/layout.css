@@ -6,13 +6,104 @@ body {
 body {
   margin: 0;
   background: var(--letterbox);
+  color: var(--chalk);
+  font-family: var(--font-ui);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
 
-/* Sized in JS to a whole number of CSS pixels at the stage aspect ratio. */
+/* Fixed logical stage, scaled as a unit by main.ts so the court and the strip
+   can never drift out of alignment. */
 #stage {
+  flex: none;
+  width: 1600px;
+  height: 1000px;
+  display: flex;
+  flex-direction: column;
+  background: var(--court-deep);
+}
+
+#court {
   display: block;
+  width: 1600px;
+  height: 800px;
+}
+
+/* --- drill strip (DESIGN.md §8) ------------------------------------------ */
+
+#strip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 56px;
+  background: color-mix(in srgb, var(--court-deep) 82%, black);
+  border-top: 1px solid color-mix(in srgb, var(--chalk) 14%, transparent);
+}
+
+.strip-line {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 30px;
+  line-height: 1.35;
+  white-space: pre;
+}
+
+/* The two lines align character-for-character: every cell is one fixed-width
+   box, occupied or not, so state changes never shift the layout. */
+.cell {
+  display: inline-block;
+  width: 1ch;
+  border-bottom: 2px solid transparent;
+}
+
+.strip-target {
+  color: var(--chalk);
+  opacity: 0.55;
+}
+
+.strip-typed {
+  color: var(--chalk);
+}
+
+.strip-typed .ok {
+  color: var(--chalk);
+}
+
+.strip-typed .bad {
+  color: var(--brick);
+  border-bottom-color: var(--brick);
+}
+
+.strip-typed .caret {
+  background: var(--ball);
+}
+
+/* Pulses only when idle (§8) — the class is applied after a keystroke pause. */
+.strip-typed.idle .caret {
+  animation: caret-pulse 1s steps(1, end) infinite;
+}
+
+@keyframes caret-pulse {
+  50% {
+    background: transparent;
+  }
+}
+
+.strip-hint {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--net);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .strip-typed.idle .caret {
+    animation: none;
+  }
 }

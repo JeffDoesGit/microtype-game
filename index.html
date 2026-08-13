@@ -6,7 +6,14 @@
     <title>Hoops Type</title>
   </head>
   <body>
-    <canvas id="stage" aria-label="Court"></canvas>
+    <div id="stage">
+      <canvas id="court" aria-hidden="true"></canvas>
+      <section id="strip" aria-label="Drill">
+        <p class="strip-line strip-target" id="strip-target"></p>
+        <p class="strip-line strip-typed" id="strip-typed"></p>
+        <p class="strip-hint" id="strip-hint"></p>
+      </section>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
