@@ -101,3 +101,59 @@ test('an untouched drill reports zeroes, not NaN', () => {
   assert.equal(stats.score, 0)
   assert.equal(stats.elapsedMs, 0)
 })
+
+test('live wpm counts the line still being typed', () => {
+  const scorer = createScorer()
+  scorer.keystroke(0)
+
+  const state = createLineState('he or she')
+  for (const key of 'he or ') applyKey(state, key)
+  scorer.keystroke(60_000)
+
+  // Nothing committed yet, so an unaware scorer would report zero.
+  assert.equal(scorer.stats(60_000).correctChars, 0)
+  // Six clean characters in one minute is 1.2 gwam.
+  assert.equal(scorer.liveWpm(60_000, state), 1.2)
+})
+
+test('live wpm excludes characters that were ever wrong', () => {
+  const scorer = createScorer()
+  scorer.keystroke(0)
+
+  const clean = createLineState('he or she')
+  for (const key of 'he or ') applyKey(clean, key)
+
+  const fumbled = createLineState('he or she')
+  for (const key of 'hx or ') applyKey(fumbled, key)
+
+  scorer.keystroke(60_000)
+  assert.ok(scorer.liveWpm(60_000, fumbled) < scorer.liveWpm(60_000, clean))
+})
+
+test('live wpm is smoothed over a 3-second window', () => {
+  const scorer = createScorer()
+  scorer.keystroke(0)
+  scorer.keystroke(60_000)
+
+  const state = createLineState('he or she')
+  for (const key of 'he or she') applyKey(state, key)
+
+  // Nothing typed yet reads as zero.
+  assert.equal(scorer.liveWpm(60_000, createLineState('he or she')), 0)
+
+  // A full line a moment later reads as the mean of both samples, not the
+  // raw 1.8 — that averaging is what stops the rail jittering.
+  assert.equal(scorer.liveWpm(60_500, state), 0.9)
+
+  // Once the window has passed the slow sample by, the reading settles.
+  assert.equal(scorer.liveWpm(70_000, state), 1.8)
+})
+
+test('live wpm with no line in progress reports the committed rate', () => {
+  const scorer = createScorer()
+  scorer.keystroke(0)
+  scorer.keystroke(60_000)
+  playLine(scorer, 'he or she', 'he or she')
+
+  assert.equal(scorer.liveWpm(60_000, null), 1.8)
+})

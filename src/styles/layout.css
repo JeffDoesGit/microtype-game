@@ -26,10 +26,77 @@ body {
   background: var(--court-deep);
 }
 
+#court-row {
+  display: flex;
+  height: 800px;
+}
+
 #court {
   display: block;
-  width: 1600px;
+  width: 1360px;
   height: 800px;
+}
+
+/* --- score rail (DESIGN.md §2, §5) --------------------------------------- */
+
+#rail {
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--court-deep) 82%, black);
+  border-left: 1px solid color-mix(in srgb, var(--chalk) 14%, transparent);
+}
+
+.rail-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--chalk) 12%, transparent);
+}
+
+.rail-cell:last-child {
+  border-bottom: 0;
+}
+
+.rail-label {
+  font-size: 17px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--chalk) 58%, transparent);
+}
+
+/* Segmented-display treatment: recessed panel, tabular numerals. */
+.rail-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.rail-value {
+  font-family: var(--font-mono);
+  font-size: 46px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--chalk);
+}
+
+.rail-value-small {
+  font-size: 30px;
+}
+
+/* Live rate at or above the lesson goal (§5). */
+.rail-value-hit {
+  color: var(--net);
+}
+
+.rail-combo {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  color: var(--net);
 }
 
 /* --- drill strip (DESIGN.md §8) ------------------------------------------ */

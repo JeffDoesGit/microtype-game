@@ -7,7 +7,30 @@
   </head>
   <body>
     <div id="stage">
-      <canvas id="court" aria-hidden="true"></canvas>
+      <div id="court-row">
+        <canvas id="court" aria-hidden="true"></canvas>
+        <aside id="rail" aria-label="Scoreboard">
+          <div class="rail-cell">
+            <span class="rail-label">Score</span>
+            <span class="rail-readout">
+              <span class="rail-value" id="rail-score">0000</span>
+              <span class="rail-combo" id="rail-combo"></span>
+            </span>
+          </div>
+          <div class="rail-cell">
+            <span class="rail-label">WPM</span>
+            <span class="rail-value" id="rail-wpm">0</span>
+          </div>
+          <div class="rail-cell">
+            <span class="rail-label">Goal</span>
+            <span class="rail-value" id="rail-goal">0</span>
+          </div>
+          <div class="rail-cell">
+            <span class="rail-label">Line</span>
+            <span class="rail-value rail-value-small" id="rail-line">1/1</span>
+          </div>
+        </aside>
+      </div>
       <section id="strip" aria-label="Drill">
         <p class="strip-line strip-target" id="strip-target"></p>
         <p class="strip-line strip-typed" id="strip-typed"></p>
