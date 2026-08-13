@@ -17,10 +17,13 @@ export type Strip = {
   setHint(text: string): void
 }
 
-/** Spaces need a glyph box; the cells are fixed-width, so any filler works. */
+/**
+ * Cells are fixed-width and rendered with `white-space: pre`, so a real space
+ * holds its box. Using a non-breaking space here instead would make the panel's
+ * text differ from the drill text it is showing.
+ */
 function cellText(char: string | null): string {
-  if (char === null) return ' '
-  return char === ' ' ? ' ' : char
+  return char === null ? ' ' : char
 }
 
 function buildRow(row: HTMLElement, count: number): HTMLSpanElement[] {
@@ -73,7 +76,7 @@ export function createStrip(
       })
 
       const tail = cells[state.chars.length]!
-      tail.textContent = ' '
+      tail.textContent = ' '
       tail.classList.toggle('caret', state.cursor >= state.chars.length && !state.committed)
 
       markActive()

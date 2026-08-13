@@ -8,9 +8,16 @@
  */
 
 import type { DrillStats } from '../game/scoring.ts'
+import { problemKeys } from '../store/save.ts'
+
+export type ResultsExtras = {
+  /** Best gwam stored for this lesson, after this attempt is folded in. */
+  bestWpm: number
+  goalWpm: number
+}
 
 export type Modal = {
-  showResults(stats: DrillStats): void
+  showResults(stats: DrillStats, extras: ResultsExtras): void
   hide(): void
   readonly isOpen: boolean
 }
@@ -39,15 +46,26 @@ export function createModal(root: HTMLElement, title: HTMLElement, body: HTMLEle
       return open
     },
 
-    showResults(stats) {
-      title.textContent = 'Drill complete'
-      body.replaceChildren(
-        row('Gwam', Math.round(stats.wpm).toString()),
+    showResults(stats, extras) {
+      const gwam = Math.round(stats.wpm)
+      const rows = [
+        row('Gwam', extras.goalWpm > 0 && gwam >= extras.goalWpm ? `${gwam}  goal met` : `${gwam}`),
         row('Accuracy', `${Math.round(stats.accuracy * 100)}%`),
         row('Score', stats.score.toString()),
         row('Baskets', `${stats.makes} made / ${stats.misses} missed`),
         row('Time', `${(stats.elapsedMs / 1000).toFixed(1)}s`),
-      )
+        row('Best gwam', Math.round(extras.bestWpm).toString()),
+      ]
+
+      // §7's problem keys, scoped to this round. Omitted entirely on a clean
+      // drill rather than shown as an empty row.
+      const worst = problemKeys(stats.keyErrors, 5)
+      if (worst.length > 0) {
+        rows.push(row('Problem keys', worst.map((key) => (key === ' ' ? '␣' : key)).join('  ')))
+      }
+
+      title.textContent = 'Drill complete'
+      body.replaceChildren(...rows)
       root.hidden = false
       open = true
     },
