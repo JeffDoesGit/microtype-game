@@ -1,10 +1,7 @@
 /**
- * The results card (DESIGN.md §7): a modal over the court showing the round's
- * numbers, dismissed with Enter.
- *
- * Deliberately the same shape as the coach interjection in §5 — a heading, a
- * short body, and "Strike Enter to continue." — so one component serves both
- * when the coach modal lands.
+ * The modal (DESIGN.md §5, §7): results at the end of a drill, and the coach
+ * interjection mid-drill. Both are a heading, a short body, and "Strike Enter
+ * to continue.", so one component serves both.
  */
 
 import type { DrillStats } from '../game/scoring.ts'
@@ -16,8 +13,15 @@ export type ResultsExtras = {
   goalWpm: number
 }
 
+export type CoachCard = {
+  errorRate: number
+  tip: string
+  linesRemaining: number
+}
+
 export type Modal = {
   showResults(stats: DrillStats, extras: ResultsExtras): void
+  showCoach(card: CoachCard): void
   hide(): void
   readonly isOpen: boolean
 }
@@ -36,6 +40,14 @@ function row(label: string, value: string): HTMLElement {
 
   item.append(key, val)
   return item
+}
+
+/** The coach's advice reads as a sentence, not a scoreboard figure. */
+function tipRow(text: string): HTMLElement {
+  const tip = document.createElement('p')
+  tip.className = 'modal-tip'
+  tip.textContent = text
+  return tip
 }
 
 export function createModal(root: HTMLElement, title: HTMLElement, body: HTMLElement): Modal {
@@ -66,6 +78,17 @@ export function createModal(root: HTMLElement, title: HTMLElement, body: HTMLEle
 
       title.textContent = 'Drill complete'
       body.replaceChildren(...rows)
+      root.hidden = false
+      open = true
+    },
+
+    showCoach(card) {
+      title.textContent = 'You made too many errors'
+      body.replaceChildren(
+        row('Error rate', `${Math.round(card.errorRate * 100)}%`),
+        row('Lines remaining', card.linesRemaining.toString()),
+        tipRow(card.tip),
+      )
       root.hidden = false
       open = true
     },

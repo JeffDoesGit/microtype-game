@@ -241,12 +241,14 @@ src/
     input.ts              keystroke → CharState, the rules in §3
     scoring.ts            wpm, accuracy, combo
     shots.ts              shot queue, arc math, resolution
+    coach.ts              per-line error rate and the tip text
   render/
     court.ts              canvas: hoop, floor, ball rack
     ball.ts               single-shot draw
     strip.ts              DOM drill strip
     rail.ts               DOM score rail
-    results.ts            DOM results card
+    results.ts            DOM results and coach modal
+    sound.ts              the three effects, synthesized
   content/
     lessons.json
     wordbank.json
@@ -272,7 +274,7 @@ vite.config.ts
 5. **Scoring + rail** — WPM, combo, goal.
 6. **Content** — lessons.json authored, then random and custom sources.
 7. **Persistence + results screen** — save schema, problem keys. The results card itself is a plain stats modal (§7), shipped early alongside the court.
-8. **Coach modal, sound, polish.**
+8. **Coach modal, sound, polish.** Sound is synthesized with WebAudio rather than shipped as files — no assets to 404 on Pages, and nothing to add to the dependency list.
 
 Steps 2 and 3 produce something playable. Get there fast and test the feel before building the court — if the typing doesn't feel good, no amount of basketball fixes it.
 

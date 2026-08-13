@@ -8,6 +8,7 @@ import {
   wordIndexAt,
   type LineState,
 } from './game/input.ts'
+import { coachTip, reportLine, shouldInterject } from './game/coach.ts'
 import { createScorer } from './game/scoring.ts'
 import { createShotQueue } from './game/shots.ts'
 import {
@@ -21,6 +22,7 @@ import {
 } from './render/court.ts'
 import { createRail } from './render/rail.ts'
 import { createModal } from './render/results.ts'
+import { createSound } from './render/sound.ts'
 import { createStrip } from './render/strip.ts'
 import { loadSave, persistSave, recordAttempt, type DrillMode } from './store/save.ts'
 import {
@@ -102,6 +104,18 @@ function selectSource(): { source: DrillSource; mode: DrillMode } {
     : { source: createLessonSource(id), mode: 'lesson' }
 }
 
+/**
+ * §1: desktop-first, physical keyboard required. A device with no fine pointer
+ * gets an honest redirect instead of a half-working game.
+ */
+function gateTouchDevices(): boolean {
+  if (window.matchMedia('(any-pointer: fine)').matches) return false
+
+  const gate = document.querySelector<HTMLElement>('#touch-gate')
+  if (gate) gate.hidden = false
+  return true
+}
+
 function required<T extends HTMLElement>(selector: string): T {
   const element = document.querySelector<T>(selector)
   if (!element) throw new Error(`${selector} missing from index.html`)
@@ -109,17 +123,39 @@ function required<T extends HTMLElement>(selector: string): T {
 }
 
 function main(): void {
+  if (gateTouchDevices()) return
+
   const stage = required<HTMLElement>('#stage')
   const canvas = required<HTMLCanvasElement>('#court')
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('2D canvas context unavailable')
 
   const palette = readPalette()
+  let save = loadSave(window.localStorage)
+  const sound = createSound(save.settings.sound)
+  let interjected = false
+
   const strip = createStrip(
     required('#strip-target'),
     required('#strip-typed'),
     required('#strip-hint'),
   )
+  const muteButton = required<HTMLButtonElement>('#rail-mute')
+  const paintMute = (): void => {
+    muteButton.textContent = sound.enabled ? 'Sound on' : 'Sound off'
+    muteButton.setAttribute('aria-pressed', String(!sound.enabled))
+  }
+  muteButton.addEventListener('click', () => {
+    sound.setEnabled(!sound.enabled)
+    if (sound.enabled) sound.arm()
+    save = { ...save, settings: { ...save.settings, sound: sound.enabled } }
+    persistSave(window.localStorage, save)
+    paintMute()
+    // Clicking the rail must not steal the keyboard from the drill.
+    muteButton.blur()
+  })
+  paintMute()
+
   const rail = createRail(
     required('#rail-score'),
     required('#rail-combo'),
@@ -136,7 +172,6 @@ function main(): void {
 
   const { source, mode } = selectSource()
   const lines = source.getLines()
-  let save = loadSave(window.localStorage)
   let lineIndex = 0
   let state: LineState = createLineState(lines[0]!)
   let words = wordsOf(lines[0]!)
@@ -214,6 +249,7 @@ function main(): void {
     if (finished) return
 
     const now = performance.now()
+    sound.arm()
     const events = applyKey(state, event.key)
     scorer.keystroke(now)
 
@@ -227,14 +263,21 @@ function main(): void {
         const slot = layout.slots[e.wordIndex]
         if (slot) shotQueue.fire(slot, 'make', e.wordIndex, now)
         scorer.recordMake()
+        sound.play('make')
       } else if (e.kind === 'miss') {
         // §4 seeds missKind from the error's character index, so the same
         // mistake always bricks the same way.
         const slot = layout.slots[e.wordIndex]
         if (slot) shotQueue.fire(slot, 'miss', e.charIndex, now)
         scorer.recordMiss(state.chars[e.charIndex]!.target)
+        sound.play('brick')
       } else if (e.kind === 'lineCommitted') {
+        sound.play('lineComplete')
         scorer.commitLine(state)
+
+        // §5: at most one interjection per drill, so it stays a moment.
+        const report = reportLine(state)
+        const interject = shouldInterject(report, interjected)
         lineIndex += 1
         const next = lines[lineIndex]
         if (next === undefined) {
@@ -245,6 +288,15 @@ function main(): void {
           words = wordsOf(next)
           layout = computeRackLayout(words.length)
           shotQueue.clear()
+
+          if (interject) {
+            interjected = true
+            modal.showCoach({
+              errorRate: report.errorRate,
+              tip: coachTip(report),
+              linesRemaining: lines.length - lineIndex,
+            })
+          }
         }
       }
     }

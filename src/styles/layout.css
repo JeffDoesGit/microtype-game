@@ -200,6 +200,8 @@ body {
 
 .modal-title {
   margin: 0 0 28px;
+  font-family: var(--font-display);
+  font-stretch: 125%;
   font-size: 40px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -238,4 +240,49 @@ body {
 .modal-footer kbd {
   font-family: var(--font-mono);
   font-size: 0.95em;
+}
+
+.modal-tip {
+  margin: 22px 0 0;
+  font-size: 23px;
+  line-height: 1.45;
+  color: var(--chalk);
+}
+
+/* --- touch gate (DESIGN.md §1) ------------------------------------------- */
+
+#touch-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8vw;
+  text-align: center;
+  background: var(--court-deep);
+  font-size: clamp(20px, 5vw, 34px);
+  line-height: 1.5;
+  color: var(--chalk);
+}
+
+#touch-gate[hidden] {
+  display: none;
+}
+
+.rail-mute {
+  margin-top: 14px;
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--chalk) 62%, transparent);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--chalk) 22%, transparent);
+  cursor: pointer;
+}
+
+.rail-mute:hover {
+  color: var(--chalk);
 }

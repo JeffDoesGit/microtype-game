@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hoops Type</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23F26B21'/%3E%3Cg stroke='%2316324F' stroke-width='2' fill='none'%3E%3Cpath d='M2 16h28M16 2v28'/%3E%3C/g%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,700&family=Space+Grotesk:wght@400;500&family=Martian+Mono:wdth,wght@100,400;100,600&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="stage">
@@ -28,6 +38,9 @@
           <div class="rail-cell">
             <span class="rail-label">Line</span>
             <span class="rail-value rail-value-small" id="rail-line">1/1</span>
+            <button type="button" class="rail-mute" id="rail-mute" aria-pressed="false">
+              Sound on
+            </button>
           </div>
         </aside>
       </div>
@@ -43,6 +56,11 @@
           <p class="modal-footer">Strike <kbd>Enter</kbd> to continue.</p>
         </div>
       </div>
+    </div>
+    <!-- §1: a typing game with an on-screen keyboard is a worse product than
+         an honest redirect. -->
+    <div id="touch-gate" hidden>
+      <p>Hoops Type needs a physical keyboard. Open this on a laptop or desktop.</p>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

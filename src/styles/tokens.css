@@ -11,10 +11,11 @@
      darker than --court-deep so the stage bounds are visible while scaling. */
   --letterbox: #0b1622;
 
-  /* Type — DESIGN.md §8. The named faces are not loaded yet; webfont delivery
-     is polish (step 8), so these fall back to system faces for now. The mono
-     stack is the one that matters: the drill strip only works if the two lines
-     align character-for-character. */
+  /* Type — DESIGN.md §8. Loaded in index.html, with system fallbacks so a
+     blocked font request costs appearance and nothing else. The mono stack is
+     the one that matters: the drill strip only works if the two lines align
+     character-for-character. */
+  --font-display: 'Archivo', 'Space Grotesk', system-ui, sans-serif;
   --font-ui: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'Martian Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo,
     monospace;
