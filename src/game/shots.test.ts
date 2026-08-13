@@ -9,30 +9,30 @@ import {
   type Vec2,
 } from './shots.ts'
 
-const SHOOTER: Vec2 = { x: 800, y: 726 }
-const HOOP: Vec2 = { x: 400, y: 214 }
+const SLOT: Vec2 = { x: 400, y: 566 }
+const HOOP: Vec2 = { x: 800, y: 196 }
 const moving = { instant: () => false }
 
 test('an arc starts at the shooter and ends at the target', () => {
-  const shot = createShot(SHOOTER, HOOP, 'make', 0, 0)
+  const shot = createShot(SLOT, HOOP, 'make', 0, 0)
 
-  assert.deepEqual(arcPoint(shot, 0), SHOOTER)
+  assert.deepEqual(arcPoint(shot, 0), SLOT)
   assert.deepEqual(arcPoint(shot, 1), shot.end)
   // A make terminates at the rim center.
   assert.deepEqual(shot.end, HOOP)
 })
 
 test('the arc rises above both endpoints', () => {
-  const shot = createShot(SHOOTER, HOOP, 'make', 0, 0)
+  const shot = createShot(SLOT, HOOP, 'make', 0, 0)
   const apex = arcPoint(shot, 0.5)
 
   assert.ok(apex.y < HOOP.y, 'apex should sit above the hoop')
-  assert.ok(apex.y < SHOOTER.y)
+  assert.ok(apex.y < SLOT.y)
 })
 
 test('duration scales with distance, inside the range §4 gives', () => {
-  const near = createShot(SHOOTER, { x: 800, y: 396 }, 'make', 0, 0)
-  const far = createShot(SHOOTER, { x: 120, y: 186 }, 'make', 0, 0)
+  const near = createShot(SLOT, { x: 800, y: 396 }, 'make', 0, 0)
+  const far = createShot(SLOT, { x: 120, y: 186 }, 'make', 0, 0)
 
   assert.ok(near.duration >= 380 && near.duration <= 520)
   assert.ok(far.duration >= 380 && far.duration <= 520)
@@ -40,28 +40,28 @@ test('duration scales with distance, inside the range §4 gives', () => {
 })
 
 test('missKind is deterministic from the seed and covers all three kinds', () => {
-  const kinds = [0, 1, 2, 3].map((seed) => createShot(SHOOTER, HOOP, 'miss', seed, 0).missKind)
+  const kinds = [0, 1, 2, 3].map((seed) => createShot(SLOT, HOOP, 'miss', seed, 0).missKind)
 
   assert.deepEqual(kinds, ['rim', 'backboard', 'air', 'rim'])
   // Same mistake, same look.
   assert.equal(
-    createShot(SHOOTER, HOOP, 'miss', 7, 0).missKind,
-    createShot(SHOOTER, HOOP, 'miss', 7, 999).missKind,
+    createShot(SLOT, HOOP, 'miss', 7, 0).missKind,
+    createShot(SLOT, HOOP, 'miss', 7, 999).missKind,
   )
 })
 
 test('a make ends at the rim, every miss ends away from it', () => {
-  assert.deepEqual(createShot(SHOOTER, HOOP, 'make', 0, 0).end, HOOP)
+  assert.deepEqual(createShot(SLOT, HOOP, 'make', 0, 0).end, HOOP)
 
   for (const seed of [0, 1, 2]) {
-    const miss = createShot(SHOOTER, HOOP, 'miss', seed, 0)
+    const miss = createShot(SLOT, HOOP, 'miss', seed, 0)
     const off = Math.hypot(miss.end.x - HOOP.x, miss.end.y - HOOP.y)
     assert.ok(off > 10, `${miss.missKind} should not end on the rim`)
   }
 })
 
 test('a shot flies, drops, then retires', () => {
-  const shot = createShot(SHOOTER, HOOP, 'make', 0, 1000)
+  const shot = createShot(SLOT, HOOP, 'make', 0, 1000)
 
   assert.equal(shotAt(shot, 1000).phase, 'flight')
   assert.equal(shotAt(shot, 1000 + shot.duration / 2).phase, 'flight')
@@ -69,53 +69,54 @@ test('a shot flies, drops, then retires', () => {
   assert.equal(shotAt(shot, 1000 + shot.duration + 5000).phase, 'done')
 })
 
-test('the trail advances with the ball and never runs ahead of it', () => {
-  const shot = createShot(SHOOTER, HOOP, 'make', 0, 0)
-
-  assert.equal(shotAt(shot, 0).progress, 0)
+test('the ball travels from its slot toward the hoop', () => {
+  const shot = createShot(SLOT, HOOP, 'make', 0, 0)
+  const start = shotAt(shot, 0)
   const mid = shotAt(shot, shot.duration / 2)
-  assert.ok(mid.progress > 0 && mid.progress < 1)
-  assert.equal(shotAt(shot, shot.duration).progress, 1)
+
+  assert.equal(start.phase, 'flight')
+  assert.equal(mid.phase, 'flight')
+  if (start.phase !== 'flight' || mid.phase !== 'flight') return
+  // Slot is left of the hoop, so the ball tracks rightward across the court.
+  assert.ok(mid.at.x > start.at.x)
 })
 
-test('the queue keeps every shot of the line as the shot chart', () => {
-  const queue = createShotQueue(SHOOTER, moving)
+test('retired shots leave nothing behind on the court', () => {
+  const queue = createShotQueue(HOOP, moving)
 
-  queue.fire(HOOP, 'make', 0, 0)
-  queue.fire(HOOP, 'miss', 1, 10)
+  queue.fire(SLOT, 'make', 0, 0)
+  queue.fire(SLOT, 'miss', 1, 10)
   assert.equal(queue.shots.length, 2)
 
-  // Long after both have landed, the chart still holds them.
-  assert.equal(queue.isAnimating(9000), false)
-  assert.equal(queue.shots.length, 2)
+  // Firing again once the earlier two have landed prunes them.
+  queue.fire(SLOT, 'make', 2, 9000)
+  assert.equal(queue.shots.length, 1)
+  assert.equal(queue.isAnimating(20000), false)
 })
 
 test('in-flight balls are capped at six, oldest dropped first', () => {
-  const queue = createShotQueue(SHOOTER, moving)
+  const queue = createShotQueue(HOOP, moving)
 
-  for (let i = 0; i < 6; i++) queue.fire(HOOP, 'make', i, 0)
+  for (let i = 0; i < 6; i++) queue.fire(SLOT, 'make', i, 0)
   assert.equal(queue.shots.filter((s) => shotAt(s, 0).phase === 'flight').length, 6)
 
-  queue.fire(HOOP, 'make', 6, 0)
+  queue.fire(SLOT, 'make', 6, 0)
   const inFlight = queue.shots.filter((s) => shotAt(s, 0).phase === 'flight')
   assert.equal(inFlight.length, 6)
   assert.equal(queue.shots[0]!.cut, true, 'the oldest ball should be the one dropped')
-  // Dropping a ball must not drop its trail.
-  assert.equal(queue.shots.length, 7)
 })
 
-test('clear() empties the chart at the line boundary', () => {
-  const queue = createShotQueue(SHOOTER, moving)
-  queue.fire(HOOP, 'make', 0, 0)
+test('clear() empties the queue at the line boundary', () => {
+  const queue = createShotQueue(HOOP, moving)
+  queue.fire(SLOT, 'make', 0, 0)
 
   queue.clear()
   assert.equal(queue.shots.length, 0)
 })
 
-test('reduced motion lands a shot instantly with a full trail', () => {
-  const queue = createShotQueue(SHOOTER, { instant: () => true })
-  const shot = queue.fire(HOOP, 'make', 0, 0)
+test('reduced motion lands a shot with no travel', () => {
+  const queue = createShotQueue(HOOP, { instant: () => true })
+  const shot = queue.fire(SLOT, 'make', 0, 0)
 
   assert.equal(shotAt(shot, 0).phase, 'done')
-  assert.equal(shotAt(shot, 0).progress, 1)
 })

@@ -17,7 +17,7 @@ A browser typing-drill game. You type a line of text; each word you finish clean
 | Hosting | GitHub Pages via GitHub Actions | `username.github.io/hoops-type`. Action runs `vite build`, deploys `dist/`. |
 | Persistence | `localStorage` | No backend in v1. |
 
-Set `base: '/hoops-type/'` in `vite.config.ts` or asset paths break on Pages. This is the single most common way this deploy fails.
+Set `base` in `vite.config.ts` to match the repository name — the repo is currently `microtype-game`, so `/microtype-game/` — or asset paths break on Pages. This is the single most common way this deploy fails. The deploy workflow passes it via `BASE_PATH` derived from the repo name, so a rename can't silently break the build.
 
 **Platform:** desktop-first, physical keyboard required. On touch devices, show a full-screen card: "Hoops Type needs a physical keyboard. Open this on a laptop or desktop." Don't half-support mobile — a typing game with an on-screen keyboard is a worse product than an honest redirect.
 
@@ -29,25 +29,26 @@ Preserve the original's spatial arrangement. Fixed 16:10 stage, letterboxed, sca
 
 ```
 ┌────────────────────────────────────────────────┬──────────┐
-│                                                │  SCORE   │
-│                  COURT                         │   0036   │
-│         (canvas — hoops, balls, arcs)          │          │
+│                  ┌───────┐                     │  SCORE   │
+│                  │   ▁   │  ← the hoop         │   0036   │
+│                  └──▔▔▔──┘                     │          │
 │                                                ├──────────┤
-│   ◉      ◉      ◉      ◉      ◉      ◉         │   WPM    │
-│  [or]  [for]  [fit;] [she] [the;] [jak]        │    38    │
+│                  COURT                         │   WPM    │
+│          (canvas — hoop, balls, arcs)          │    38    │
 │                                                ├──────────┤
-│   ◉      ◉      ◉      ◉      ◉      ◉         │   GOAL   │
-│ [she;]  [a]   [if]  [left]  [a] [salad]        │    41    │
-│                                                ├──────────┤
-│                    ▲ shooter                   │ LINE 2/4 │
+│  (or)  (for) (fit;) (she) (the;) (jak)         │   GOAL   │
+│                                                │    41    │
+│ (she;)  (a)  (if)  (left)  (a)  (salad)        ├──────────┤
+│                ▲ the ball rack                 │ LINE 2/4 │
 ├────────────────────────────────────────────────┴──────────┤
 │ ▸ he or she; for a fit; if she left the; a jak salad      │
 │   he ir she for a firtl if shelfert; a jak sala▏          │
 └───────────────────────────────────────────────────────────┘
 ```
 
-- **Court** — canvas. Hoops laid out in two rows, one hoop per word in the current line. Words label their hoop. Up to 12 hoops per line; if a line has more words, wrap to a third row and shrink.
-- **Shooter** — fixed origin at bottom-center of the canvas. All balls launch from here.
+- **Court** — canvas. One hoop, up at top center, with backboard, rim, and net.
+- **Ball rack** — one ball per word in the current line, laid out in two rows across the lower court, left-to-right, top row then bottom. Each ball carries its word. Up to 12 balls per line; if a line has more words, wrap to a third row and shrink. A ball leaves the rack when its word resolves, so the rack empties as the line is typed.
+- **Shots launch from the ball's slot in the rack**, not from a single fixed point — that is what keeps arcs distinct with only one target on the court.
 - **Right rail** — Score, live WPM, goal WPM, line counter. Segmented-display treatment.
 - **Drill strip** — the two-line panel. Target line on top, your line below it, character-aligned in monospace. This is the heart of the game; give it the most design attention.
 
@@ -78,16 +79,18 @@ type LineState = {
 
 1. **Printable keypress** → compare to `chars[cursor].target`.
    - Match: set `typed`, `cursor++`.
-   - Mismatch: set `typed` to what they pressed, set `everWrong = true`, **fire a miss shot immediately** at the hoop for the current word, `cursor++`.
+   - Mismatch: set `typed` to what they pressed, set `everWrong = true`, **fire a miss shot immediately** from the current word's ball, `cursor++`.
 2. **Backspace** → `cursor--`, clear `typed` at that index. `everWrong` persists. No shot fired, no shot un-fired.
-3. **Cursor crosses a word boundary** (advances past the last index of a span, moving forward only) → resolve that word. If every char in the span has `everWrong === false`, **fire a make shot** at that word's hoop. Otherwise fire nothing — the misses already fired during the word. Set `wordResolved[i] = true` so backspacing back into it and re-crossing doesn't re-fire.
+3. **Cursor crosses a word boundary** (advances past the last index of a span, moving forward only) → resolve that word. If every char in the span has `everWrong === false`, **fire a make shot** from that word's ball. Otherwise fire nothing — the misses already fired during the word. Set `wordResolved[i] = true` so backspacing back into it and re-crossing doesn't re-fire. Either way the ball leaves the rack.
 4. **Cursor reaches end of line** → resolve the final word, then require `Enter` to commit and advance. (Matches the original's "Strike Enter to continue.")
 5. **Input past the end of the line is ignored.** No overflow characters.
 6. **Space is a character like any other.** Typing space where a letter belongs is a miss.
 
-### Word-to-hoop mapping
+### Word-to-ball mapping
 
-Word index N in the line → hoop N, laid out left-to-right, top row then bottom. The hoop for the current word gets a subtle highlight ring so the player's eye knows where the next ball is going.
+Word index N in the line → rack slot N, laid out left-to-right, top row then bottom. The current word's ball gets a subtle highlight ring so the player's eye knows which ball goes next.
+
+A word's span covers the whitespace that **follows** it, so a word resolves — and its ball flies — when you type the space after it. The separator is part of the word for correctness: fumble it and the word is already dirty when it resolves, so it never scores.
 
 ---
 
@@ -97,8 +100,8 @@ Not a physics sim. Parametric arcs, resolved at spawn time.
 
 ```ts
 type Shot = {
-  origin: Vec2;         // always the shooter
-  hoop: Vec2;
+  origin: Vec2;         // the word's ball in the rack
+  hoop: Vec2;           // always the one hoop
   outcome: 'make' | 'miss';
   missKind?: 'rim' | 'backboard' | 'air';
   t0: number;
@@ -106,16 +109,14 @@ type Shot = {
 };
 ```
 
-- **Make:** quadratic bezier from shooter through a control point above the hoop, terminating at the rim center. Ball passes through, net ripples (a 3-frame vertex wobble), ball fades below the rim.
+- **Make:** quadratic bezier from the word's ball through a control point above the hoop, terminating at the rim center. Ball passes through, net ripples (a 3-frame vertex wobble), ball fades below the rim.
 - **Miss:** same arc but the endpoint is offset — `rim` overshoots the front edge and deflects down-forward, `backboard` hits high and drops short, `air` misses wide. Pick `missKind` deterministically from the error index so the same mistake looks the same.
 - **Concurrency:** cap at 6 in-flight balls. Beyond that, drop the oldest. Fast typists will trigger a stream — that should feel like a barrage, not a slideshow.
-- **Trails:** every shot leaves a thin arc trail that persists for the rest of the line. Makes are drawn in the accent color, misses in the error color and dashed.
+- **No trails.** A shot leaves nothing behind. Once the last ball has dropped the court is clean again, and the only lasting record of the round is the results card in §7.
 
-### Signature element
+### What the eye follows
 
-Those persistent arc trails are the thing this game gets remembered for. By the end of a drill the court is laced with every shot you took — a shot chart of your typing. On the results screen, freeze that chart and show it as the primary visual instead of a bar graph. Clean lines mean a clean drill; a thicket of dashed red arcs tells the story better than an accuracy percentage does.
-
-Keep everything else on the court quiet so this reads.
+With one hoop and no trails, the readable thing is the stream of balls itself: the rack emptying left-to-right as you type, and six arcs converging on a single rim when you get going. Keep everything else on the court quiet so that reads — the floor, lane, and backboard stay low-contrast, and `--ball` is reserved for the balls alone.
 
 ---
 
@@ -185,6 +186,18 @@ Cap `history` at 200 entries, FIFO. Version the schema now so migrations are pos
 
 `keyErrors` is the highest-value thing here — it powers a "your problem keys" panel on the stats screen and, later, a generated drill targeting the worst five. Track it from day one even if the UI comes later.
 
+### Results card
+
+When the drill's last line commits, put a modal over the court with the round's numbers and nothing else:
+
+- **Gwam**, rounded
+- **Accuracy**, as a percentage
+- **Score**
+- **Baskets**, made and missed
+- **Time**
+
+Dismissed with Enter, same as the coach interjection in §5 — one modal component serves both. Keep it plain: this is a scoreboard, not a report. Anything richer (history, problem keys, per-lesson bests) belongs on a separate stats screen reading from `Save`.
+
 ---
 
 ## 8. Visual direction
@@ -227,10 +240,11 @@ src/
     scoring.ts            wpm, accuracy, combo
     shots.ts              shot queue, arc math, resolution
   render/
-    court.ts              canvas: hoops, lane, trails
+    court.ts              canvas: hoop, floor, ball rack
     ball.ts               single-shot draw
     strip.ts              DOM drill strip
     rail.ts               DOM score rail
+    results.ts            DOM results card
   content/
     lessons.json
     wordbank.json
@@ -252,10 +266,10 @@ vite.config.ts
 1. **Skeleton** — Vite + TS, stage scaling, GitHub Action deploying to Pages. Ship a blank court and confirm the URL works before writing game logic. Deploy problems are cheaper to find now.
 2. **Input engine** — §3 in isolation, with unit tests. Backspace-then-retype, word resolution firing exactly once, boundary conditions at line start and end. No rendering yet.
 3. **Drill strip** — wire input to the two-line display. At this point it's a playable typing test with no basketball.
-4. **Court + shots** — hoops, layout, arcs, make/miss. Trails last.
+4. **Court + shots** — the hoop, the ball rack, arcs, make/miss.
 5. **Scoring + rail** — WPM, combo, goal.
 6. **Content** — lessons.json authored, then random and custom sources.
-7. **Persistence + results screen** — save schema, the frozen shot chart, problem keys.
+7. **Persistence + results screen** — save schema, problem keys. The results card itself is a plain stats modal (§7), shipped early alongside the court.
 8. **Coach modal, sound, polish.**
 
 Steps 2 and 3 produce something playable. Get there fast and test the feel before building the court — if the typing doesn't feel good, no amount of basketball fixes it.

@@ -17,6 +17,7 @@ body {
 /* Fixed logical stage, scaled as a unit by main.ts so the court and the strip
    can never drift out of alignment. */
 #stage {
+  position: relative;
   flex: none;
   width: 1600px;
   height: 1000px;
@@ -106,4 +107,68 @@ body {
   .strip-typed.idle .caret {
     animation: none;
   }
+}
+
+/* --- modal (DESIGN.md §5, §7) -------------------------------------------- */
+
+#modal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--court-deep) 72%, transparent);
+}
+
+#modal[hidden] {
+  display: none;
+}
+
+.modal-card {
+  min-width: 560px;
+  padding: 44px 52px;
+  background: color-mix(in srgb, var(--court-deep) 88%, black);
+  border: 2px solid color-mix(in srgb, var(--chalk) 30%, transparent);
+}
+
+.modal-title {
+  margin: 0 0 28px;
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.modal-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 48px;
+  padding: 11px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--chalk) 12%, transparent);
+  font-size: 25px;
+}
+
+.modal-stat-label {
+  color: color-mix(in srgb, var(--chalk) 66%, transparent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 19px;
+  align-self: center;
+}
+
+.modal-stat-value {
+  font-family: var(--font-mono);
+  color: var(--chalk);
+}
+
+.modal-footer {
+  margin: 32px 0 0;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--net);
+}
+
+.modal-footer kbd {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
 }

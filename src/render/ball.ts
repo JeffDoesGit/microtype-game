@@ -12,6 +12,8 @@ export function drawBall(
   alpha: number,
   color: string,
   seam: string,
+  /** Rack balls carry a word, and seams would strike through it. */
+  seams = true,
 ): void {
   ctx.save()
   ctx.globalAlpha = alpha
@@ -21,16 +23,18 @@ export function drawBall(
   ctx.arc(at.x, at.y, radius, 0, Math.PI * 2)
   ctx.fill()
 
-  // Two seams are enough to read as a basketball at this size, and keep the
-  // silhouette clean when six of them are in the air at once.
-  ctx.strokeStyle = seam
-  ctx.lineWidth = 1.5
-  ctx.beginPath()
-  ctx.moveTo(at.x - radius, at.y)
-  ctx.lineTo(at.x + radius, at.y)
-  ctx.moveTo(at.x, at.y - radius)
-  ctx.lineTo(at.x, at.y + radius)
-  ctx.stroke()
+  if (seams) {
+    // Two seams are enough to read as a basketball at this size, and keep the
+    // silhouette clean when six of them are in the air at once.
+    ctx.strokeStyle = seam
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(at.x - radius, at.y)
+    ctx.lineTo(at.x + radius, at.y)
+    ctx.moveTo(at.x, at.y - radius)
+    ctx.lineTo(at.x, at.y + radius)
+    ctx.stroke()
+  }
 
   ctx.restore()
 }
