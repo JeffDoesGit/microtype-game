@@ -1,0 +1,181 @@
+[
+  {
+    "id": "l01",
+    "title": "Home row",
+    "goalWpm": 18,
+    "newKeys": ["a", "s", "d", "f", "j", "k", "l", ";"],
+    "lines": [
+      "a lad asks a lass; dad falls; all salads fall",
+      "ask dad; a flask; all lads; a salad; jak asks",
+      "aa ss dd ff jj kk ll ;; asdf jkl; a lad falls"
+    ]
+  },
+  {
+    "id": "l02",
+    "title": "Home row + G and H",
+    "goalWpm": 20,
+    "newKeys": ["g", "h"],
+    "lines": [
+      "a glad lad has had a half; dash all glass; ah",
+      "shall a gal dash; half a flask; a slag hash;",
+      "gash a hall; ash falls; glad lads; half a lag"
+    ]
+  },
+  {
+    "id": "l03",
+    "title": "E and I",
+    "goalWpm": 22,
+    "newKeys": ["e", "i"],
+    "lines": [
+      "he said she likes a jade shield; all is glad",
+      "a field is his; she held a shell; he sighed;",
+      "if he is idle she feels glad; a high shelf is"
+    ]
+  },
+  {
+    "id": "l04",
+    "title": "R and T",
+    "goalWpm": 24,
+    "newKeys": ["r", "t"],
+    "lines": [
+      "he heard that she left it here; a fair start",
+      "the girl is there; he tries a fast trail; sit",
+      "raid the tall hills; her gift is a great deal"
+    ]
+  },
+  {
+    "id": "l05",
+    "title": "O and N",
+    "goalWpm": 26,
+    "newKeys": ["o", "n"],
+    "lines": [
+      "no one told her that the tired lion is not here",
+      "a long train left the old nation at noon there",
+      "he laid a stone; the north road is not long at all"
+    ]
+  },
+  {
+    "id": "l06",
+    "title": "U and C",
+    "goalWpm": 28,
+    "newKeys": ["u", "c"],
+    "lines": [
+      "a curious child ran into the ocean at sunrise",
+      "such a nice lunch; the tall court is closed",
+      "the school council found four cold ducks here"
+    ]
+  },
+  {
+    "id": "l07",
+    "title": "W and M",
+    "goalWpm": 30,
+    "newKeys": ["w", "m"],
+    "lines": [
+      "we walked home with the warm summer wind here",
+      "make more time; women swim; we all won it now",
+      "the small window shows a new moment each time"
+    ]
+  },
+  {
+    "id": "l08",
+    "title": "P and V",
+    "goalWpm": 32,
+    "newKeys": ["p", "v"],
+    "lines": [
+      "please provide a private place to prepare it",
+      "the vivid purple paper is a special note to open",
+      "we prove people can develop simple plans now"
+    ]
+  },
+  {
+    "id": "l09",
+    "title": "B and Y",
+    "goalWpm": 34,
+    "newKeys": ["b", "y"],
+    "lines": [
+      "by the bay small boats bob nearby every day",
+      "maybe you should buy both baby blankets today",
+      "everybody by the bay can enjoy your new abbey"
+    ]
+  },
+  {
+    "id": "l10",
+    "title": "X and Q",
+    "goalWpm": 36,
+    "newKeys": ["x", "q"],
+    "lines": [
+      "the quick fox requires exact equipment today",
+      "quiet experts explain complex questions here",
+      "six quail exit the quarry next to the old box"
+    ]
+  },
+  {
+    "id": "l11",
+    "title": "Z and comma",
+    "goalWpm": 38,
+    "newKeys": ["z", ","],
+    "lines": [
+      "amazing, puzzling quizzes dazzle, buzz, fizz",
+      "the lazy zebra, frozen, gazed at the horizon",
+      "zero, zone, zoom, size, prize, and a citizen"
+    ]
+  },
+  {
+    "id": "l12",
+    "title": "Period and apostrophe",
+    "goalWpm": 40,
+    "newKeys": [".", "'"],
+    "lines": [
+      "don't stop. it's a fine day. we can't wait.",
+      "she said, 'that's right.' he didn't answer.",
+      "i'm sure. you're late. they've gone. it's ok."
+    ]
+  },
+  {
+    "id": "l13",
+    "title": "Capitals",
+    "goalWpm": 41,
+    "newKeys": ["Shift"],
+    "lines": [
+      "Anna and Ben visited Paris, Rome, and Madrid.",
+      "The Pacific Ocean lies west of North America.",
+      "On Monday, March third, We start The Project."
+    ]
+  },
+  {
+    "id": "l14",
+    "title": "Numbers 1 to 5",
+    "goalWpm": 42,
+    "newKeys": ["1", "2", "3", "4", "5"],
+    "lines": [
+      "We sold 12 books, 34 pens, and 45 maps in May.",
+      "Flight 231 leaves at 4 and lands at 5 in Rome.",
+      "Add 1 and 2 and 3 to make 15, then 45 again.",
+      "The 25 boxes hold 341 red pens and 52 blue."
+    ]
+  },
+  {
+    "id": "l15",
+    "title": "Numbers 6 to 0",
+    "goalWpm": 43,
+    "newKeys": ["6", "7", "8", "9", "0"],
+    "lines": [
+      "In 1987 she drove 60 miles and read 90 pages.",
+      "Order 78 boxes, 90 cans, and 60 bags by June.",
+      "The 2007 team won 89 games and lost only 60.",
+      "Count 6, 7, 8, 9, and 10 before the 80 birds."
+    ]
+  },
+  {
+    "id": "l16",
+    "title": "Mixed review",
+    "goalWpm": 45,
+    "newKeys": [],
+    "lines": [
+      "The quick brown fox jumps over 13 lazy dogs.",
+      "Pack my box with 5 dozen liquid jugs, please.",
+      "We'll ship 27 crates on Monday, June 8, 2026.",
+      "Zack quit; Vera won 46 of the 90 games today."
+    ]
+  }
+]
