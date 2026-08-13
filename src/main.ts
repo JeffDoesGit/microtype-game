@@ -19,9 +19,10 @@ import {
   type Palette,
   type RackLayout,
 } from './render/court.ts'
+import { createRail } from './render/rail.ts'
 import { createModal } from './render/results.ts'
 import { createStrip } from './render/strip.ts'
-import { PLACEHOLDER_LINES } from './content/placeholder.ts'
+import { PLACEHOLDER_GOAL_WPM, PLACEHOLDER_LINES } from './content/placeholder.ts'
 
 // The stage is a fixed 16:10 logical coordinate space (DESIGN.md §2). The DOM
 // inside it is laid out at these dimensions and scaled as a unit, so the drill
@@ -96,6 +97,13 @@ function main(): void {
     required('#strip-typed'),
     required('#strip-hint'),
   )
+  const rail = createRail(
+    required('#rail-score'),
+    required('#rail-combo'),
+    required('#rail-wpm'),
+    required('#rail-goal'),
+    required('#rail-line'),
+  )
   const modal = createModal(required('#modal'), required('#modal-title'), required('#modal-body'))
 
   // §8: reduced motion draws each shot with no travel.
@@ -123,6 +131,18 @@ function main(): void {
 
   const requestPaint = (): void => {
     if (frame === 0) frame = requestAnimationFrame(paint)
+  }
+
+  const refreshRail = (now: number): void => {
+    const stats = scorer.stats(now)
+    rail.render({
+      score: stats.score,
+      combo: stats.combo,
+      wpm: scorer.liveWpm(now, finished ? null : state),
+      goalWpm: PLACEHOLDER_GOAL_WPM,
+      line: Math.min(lineIndex + 1, lines.length),
+      lineCount: lines.length,
+    })
   }
 
   const refreshStrip = (): void => {
@@ -181,6 +201,7 @@ function main(): void {
     }
 
     refreshStrip()
+    refreshRail(now)
     requestPaint()
   })
 
@@ -191,6 +212,7 @@ function main(): void {
 
   resize()
   refreshStrip()
+  refreshRail(performance.now())
   window.addEventListener('resize', resize)
   reducedMotion.addEventListener('change', requestPaint)
 }

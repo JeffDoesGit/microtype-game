@@ -25,6 +25,8 @@ export type DrillStats = {
 const POINTS_PER_MAKE = 100
 const COMBO_STEP = 0.5
 const COMBO_CAP = 4
+/** §5: smooth the live rate over this window so the rail does not jitter. */
+const SMOOTHING_MS = 3000
 
 export type Scorer = {
   /**
@@ -38,6 +40,20 @@ export type Scorer = {
   /** Fold a finished line's characters into the drill totals. */
   commitLine(state: LineState): void
   stats(now: number): DrillStats
+  /**
+   * Gwam including the line still being typed, smoothed over a 3-second window
+   * (§5). Committed lines alone would leave the rail frozen mid-line.
+   */
+  liveWpm(now: number, current: LineState | null): number
+}
+
+/** Characters typed so far in `state` that have never been wrong. */
+function cleanCharsSoFar(state: LineState): number {
+  let clean = 0
+  for (let i = 0; i < state.cursor; i++) {
+    if (!state.chars[i]!.everWrong) clean += 1
+  }
+  return clean
 }
 
 export function createScorer(): Scorer {
@@ -49,6 +65,15 @@ export function createScorer(): Scorer {
   let misses = 0
   let correctChars = 0
   let totalChars = 0
+  let samples: Array<{ at: number; wpm: number }> = []
+
+  /** Raw gwam for a given clean-character count, over the elapsed clock. */
+  const rateFor = (clean: number): number => {
+    if (startedAt === null) return 0
+    const elapsedMs = Math.max(0, Math.max(lastEventAt, startedAt) - startedAt)
+    const minutes = elapsedMs / 60_000
+    return minutes > 0 ? clean / 5 / minutes : 0
+  }
 
   return {
     keystroke(now) {
@@ -75,6 +100,15 @@ export function createScorer(): Scorer {
         totalChars += 1
         if (!char.everWrong) correctChars += 1
       }
+    },
+
+    liveWpm(now, current) {
+      const clean = correctChars + (current ? cleanCharsSoFar(current) : 0)
+      samples.push({ at: now, wpm: rateFor(clean) })
+      samples = samples.filter((sample) => now - sample.at <= SMOOTHING_MS)
+
+      const total = samples.reduce((sum, sample) => sum + sample.wpm, 0)
+      return total / samples.length
     },
 
     stats(now) {

@@ -11,16 +11,26 @@
 import { shotAt, type Shot, type Vec2 } from '../game/shots.ts'
 import { drawBall } from './ball.ts'
 
-export const COURT_WIDTH = 1600
+// The court gives up its right edge to the score rail (§2).
+export const COURT_WIDTH = 1360
 export const COURT_HEIGHT = 800
 
 /** §2: the single hoop, up at top center. */
 export const HOOP: Vec2 = { x: COURT_WIDTH / 2, y: 196 }
 
 const RIM_RADIUS = 62
-const SIDE_MARGIN = 130
-const TWO_ROW_Y = [566, 686]
-const THREE_ROW_Y = [516, 616, 716]
+// The floor narrows toward the top, so the rack is inset far enough that the
+// outermost ball in the highest row still sits inside the sideline.
+const SIDE_MARGIN = 150
+
+// Floor and lane are expressed as fractions of the court width so the shape
+// survives any change to the rail's width.
+const FLOOR_TOP_INSET = 0.206
+const FLOOR_BASE_INSET = 0.013
+const LANE_TOP_INSET = 0.431
+const LANE_BASE_INSET = 0.325
+const TWO_ROW_Y = [576, 696]
+const THREE_ROW_Y = [536, 626, 716]
 
 export type Palette = {
   courtDeep: string
@@ -88,12 +98,17 @@ function fitLabel(
 function drawFloor(ctx: CanvasRenderingContext2D, palette: Palette): void {
   // A shallow trapezoid reads as a floor in perspective without needing a
   // projection: wide at the baseline, narrower upcourt.
+  const floorTop = COURT_WIDTH * FLOOR_TOP_INSET
+  const floorBase = COURT_WIDTH * FLOOR_BASE_INSET
+  const laneTop = COURT_WIDTH * LANE_TOP_INSET
+  const laneBase = COURT_WIDTH * LANE_BASE_INSET
+
   ctx.fillStyle = palette.hardwood
   ctx.beginPath()
-  ctx.moveTo(330, 440)
-  ctx.lineTo(COURT_WIDTH - 330, 440)
-  ctx.lineTo(COURT_WIDTH - 20, COURT_HEIGHT)
-  ctx.lineTo(20, COURT_HEIGHT)
+  ctx.moveTo(floorTop, 440)
+  ctx.lineTo(COURT_WIDTH - floorTop, 440)
+  ctx.lineTo(COURT_WIDTH - floorBase, COURT_HEIGHT)
+  ctx.lineTo(floorBase, COURT_HEIGHT)
   ctx.closePath()
   ctx.fill()
 
@@ -104,17 +119,17 @@ function drawFloor(ctx: CanvasRenderingContext2D, palette: Palette): void {
 
   // The painted lane, running up to the hoop.
   ctx.beginPath()
-  ctx.moveTo(690, 440)
-  ctx.lineTo(COURT_WIDTH - 690, 440)
-  ctx.lineTo(COURT_WIDTH - 520, COURT_HEIGHT)
-  ctx.lineTo(520, COURT_HEIGHT)
+  ctx.moveTo(laneTop, 440)
+  ctx.lineTo(COURT_WIDTH - laneTop, 440)
+  ctx.lineTo(COURT_WIDTH - laneBase, COURT_HEIGHT)
+  ctx.lineTo(laneBase, COURT_HEIGHT)
   ctx.closePath()
   ctx.stroke()
 
   ctx.globalAlpha = 0.2
   ctx.beginPath()
-  ctx.moveTo(330, 440)
-  ctx.lineTo(COURT_WIDTH - 330, 440)
+  ctx.moveTo(floorTop, 440)
+  ctx.lineTo(COURT_WIDTH - floorTop, 440)
   ctx.stroke()
   ctx.restore()
 }
