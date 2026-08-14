@@ -286,3 +286,24 @@ body {
 .rail-mute:hover {
   color: var(--chalk);
 }
+
+.modal-action {
+  margin-top: 30px;
+  padding: 13px 26px;
+  font: inherit;
+  font-size: 17px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--court-deep);
+  background: var(--net);
+  border: 0;
+  cursor: pointer;
+}
+
+.modal-action:hover {
+  background: var(--chalk);
+}
+
+.modal-action[hidden] {
+  display: none;
+}

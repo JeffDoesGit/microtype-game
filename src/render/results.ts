@@ -19,11 +19,19 @@ export type CoachCard = {
   linesRemaining: number
 }
 
+export type ModalKind = 'results' | 'coach'
+
 export type Modal = {
   showResults(stats: DrillStats, extras: ResultsExtras): void
   showCoach(card: CoachCard): void
   hide(): void
   readonly isOpen: boolean
+  /**
+   * Which card is up. The coach card is a pause and closes on Enter; the
+   * results card is the end of the drill and closes only by restarting, so the
+   * caller can tell them apart.
+   */
+  readonly kind: ModalKind | null
 }
 
 function row(label: string, value: string): HTMLElement {
@@ -50,12 +58,22 @@ function tipRow(text: string): HTMLElement {
   return tip
 }
 
-export function createModal(root: HTMLElement, title: HTMLElement, body: HTMLElement): Modal {
-  let open = false
+export function createModal(
+  root: HTMLElement,
+  title: HTMLElement,
+  body: HTMLElement,
+  footer: HTMLElement,
+  restart: HTMLElement,
+): Modal {
+  let kind: ModalKind | null = null
 
   return {
     get isOpen() {
-      return open
+      return kind !== null
+    },
+
+    get kind() {
+      return kind
     },
 
     showResults(stats, extras) {
@@ -78,8 +96,12 @@ export function createModal(root: HTMLElement, title: HTMLElement, body: HTMLEle
 
       title.textContent = 'Drill complete'
       body.replaceChildren(...rows)
+      // The drill is over: there is nothing to continue to, so the card offers
+      // a restart instead of an Enter prompt that would leave a dead screen.
+      footer.hidden = true
+      restart.hidden = false
       root.hidden = false
-      open = true
+      kind = 'results'
     },
 
     showCoach(card) {
@@ -89,13 +111,15 @@ export function createModal(root: HTMLElement, title: HTMLElement, body: HTMLEle
         row('Lines remaining', card.linesRemaining.toString()),
         tipRow(card.tip),
       )
+      footer.hidden = false
+      restart.hidden = true
       root.hidden = false
-      open = true
+      kind = 'coach'
     },
 
     hide() {
       root.hidden = true
-      open = false
+      kind = null
     },
   }
 }
