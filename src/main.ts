@@ -163,15 +163,22 @@ function main(): void {
     required('#rail-goal'),
     required('#rail-line'),
   )
-  const modal = createModal(required('#modal'), required('#modal-title'), required('#modal-body'))
+  const restartButton = required<HTMLButtonElement>('#modal-restart')
+  const modal = createModal(
+    required('#modal'),
+    required('#modal-title'),
+    required('#modal-body'),
+    required('#modal-footer'),
+    restartButton,
+  )
 
   // §8: reduced motion draws each shot with no travel.
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
   const shotQueue = createShotQueue(HOOP, { instant: () => reducedMotion.matches })
-  const scorer = createScorer()
 
   const { source, mode } = selectSource()
-  const lines = source.getLines()
+  let scorer = createScorer()
+  let lines = source.getLines()
   let lineIndex = 0
   let state: LineState = createLineState(lines[0]!)
   let words = wordsOf(lines[0]!)
@@ -217,6 +224,30 @@ function main(): void {
     })
   }
 
+  /**
+   * Start the drill over. Every accumulator resets — score, clock, key errors,
+   * the coach's one-per-drill cap, the balls in the air — and a random source
+   * is asked for fresh lines rather than replaying the same ones.
+   */
+  const restartDrill = (): void => {
+    scorer = createScorer()
+    lines = source.getLines()
+    lineIndex = 0
+    state = createLineState(lines[0]!)
+    words = wordsOf(lines[0]!)
+    layout = computeRackLayout(words.length)
+    finished = false
+    interjected = false
+    shotQueue.clear()
+    modal.hide()
+
+    refreshStrip()
+    refreshRail(performance.now())
+    requestPaint()
+    // Keep the keyboard on the drill rather than the button just clicked.
+    restartButton.blur()
+  }
+
   const refreshRail = (now: number): void => {
     const stats = scorer.stats(now)
     rail.render({
@@ -240,10 +271,14 @@ function main(): void {
     // Leave browser and OS shortcuts alone; only bare keys are drill input.
     if (event.ctrlKey || event.metaKey || event.altKey) return
 
-    // The results card takes Enter and swallows everything else (§7).
     if (modal.isOpen) {
-      event.preventDefault()
-      if (event.key === 'Enter') modal.hide()
+      // The coach card is a pause: Enter resumes the drill (§5). The results
+      // card is the end of it, so keys do nothing there — and are left to the
+      // browser so the restart button stays reachable by keyboard.
+      if (modal.kind === 'coach' && event.key === 'Enter') {
+        event.preventDefault()
+        modal.hide()
+      }
       return
     }
     if (finished) return
@@ -310,6 +345,8 @@ function main(): void {
     fitStage(stage, canvas, ctx)
     requestPaint()
   }
+
+  restartButton.addEventListener('click', restartDrill)
 
   resize()
   refreshStrip()

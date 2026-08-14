@@ -9,6 +9,7 @@ import {
   createLessonSource,
   createRandomSource,
   lessonIndex,
+  letterRuns,
   supportedChars,
 } from './sources.ts'
 
@@ -211,4 +212,59 @@ test('empty custom text yields no lines rather than one blank one', () => {
   const { source } = createCustomSource('   \n\t  ')
 
   assert.deepEqual(source.getLines(), [])
+})
+
+// --- word bank and letter runs ---------------------------------------------
+
+test('the word bank holds only typeable lowercase words', () => {
+  const supported = supportedChars()
+
+  for (const word of WORDBANK) {
+    assert.match(word, /^[a-z]+$/, `${word} is not a plain lowercase word`)
+    assert.ok([...word].every((char) => supported.has(char)), `${word} is not typeable`)
+  }
+})
+
+test('the word bank has no duplicates', () => {
+  assert.equal(new Set(WORDBANK).size, WORDBANK.length)
+})
+
+test('every tier has enough material to vary a drill', () => {
+  LESSONS.forEach((lesson, index) => {
+    const allowed = allowedCharsThrough(index)
+    const words = WORDBANK.filter((word) => [...word].every((char) => allowed.has(char)))
+    const runs = words.length < 80 ? letterRuns(allowed).length : 0
+
+    assert.ok(words.length + runs >= 25, `${lesson.id} has only ${words.length + runs} tokens`)
+  })
+})
+
+test('letter runs cover the taught keys and the home row', () => {
+  const homeRow = letterRuns(allowedCharsThrough(lessonIndex('l01')))
+
+  assert.ok(homeRow.includes('aa'))
+  assert.ok(homeRow.includes('jj'))
+  assert.ok(homeRow.includes('asdf'))
+  assert.ok(homeRow.includes('jkl'))
+  // Only letters that have been taught.
+  assert.ok(!homeRow.includes('ee'))
+})
+
+test('letter runs only reach the thin tiers', () => {
+  const rich = createRandomSource('l16', { rng: seeded(9), lineCount: 30 }).getLines()
+  const tokens = new Set(rich.join(' ').split(' '))
+
+  for (const run of ['aa', 'ss', 'asdf', 'jkl']) {
+    assert.ok(!tokens.has(run), `${run} should not appear in a tier with a full word pool`)
+  }
+})
+
+test('the home row tier is varied enough not to repeat within a line', () => {
+  const lines = createRandomSource('l01', { rng: seeded(21), lineCount: 12 }).getLines()
+
+  for (const line of lines) {
+    const tokens = line.split(' ')
+    assert.ok(line.length >= 45 && line.length <= 55, `${line.length} chars — ${line}`)
+    assert.ok(tokens.length >= 4, `only ${tokens.length} tokens — ${line}`)
+  }
 })

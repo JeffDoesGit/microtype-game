@@ -34,6 +34,12 @@ const RANDOM_MAX = 55
 const CUSTOM_TARGET = 50
 /** How much more often a word carrying one of the tier's new keys is picked. */
 const NEW_KEY_WEIGHT = 3
+/**
+ * Below this many words, a tier is too thin to keep a drill varied — the home
+ * row has fewer than thirty real words in it, so a random line there would
+ * repeat itself. Those tiers get letter runs mixed in as well.
+ */
+const THIN_POOL = 80
 
 export function lessonIndex(id: string): number {
   return LESSONS.findIndex((lesson) => lesson.id === id)
@@ -71,6 +77,22 @@ function usesOnly(word: string, allowed: Set<string>): boolean {
   return [...word].every((char) => allowed.has(char))
 }
 
+/**
+ * Letter runs for the thin early tiers, in the style of the original drills:
+ * doubled keys, plus the home-row runs once the whole row is available. They
+ * are ordinary tokens as far as the rest of the game is concerned, so a run
+ * gets its own ball in the rack like any other word.
+ */
+export function letterRuns(allowed: Set<string>): string[] {
+  const letters = [...allowed].filter((char) => /[a-z]/.test(char)).sort()
+  const runs = letters.map((letter) => letter.repeat(2))
+
+  for (const row of ['asdf', 'jkl', 'asdfjkl']) {
+    if (usesOnly(row, allowed)) runs.push(row)
+  }
+  return runs
+}
+
 // --- lessons ---------------------------------------------------------------
 
 export function createLessonSource(id: string): DrillSource {
@@ -106,8 +128,10 @@ export function createRandomSource(tierId: string, options: RandomOptions = {}):
   const rng = options.rng ?? Math.random
   const lineCount = options.lineCount ?? 4
   const allowed = allowedCharsThrough(index)
-  const pool = WORDBANK.filter((word) => usesOnly(word, allowed))
-  if (pool.length === 0) throw new Error(`no words available for tier ${tierId}`)
+  const words = WORDBANK.filter((word) => usesOnly(word, allowed))
+  if (words.length === 0) throw new Error(`no words available for tier ${tierId}`)
+
+  const pool = words.length < THIN_POOL ? [...words, ...letterRuns(allowed)] : words
 
   const fresh = tier.newKeys.filter((key) => key.length === 1)
   const weighted = pool.flatMap((word) =>
